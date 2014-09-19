@@ -3,13 +3,16 @@
 
   var module = angular.module('gn_owscontext_directive', []);
 
+  var bgLayers;
+
   // OWC Client
   // Jsonix wrapper to read or write OWS Context
   var context =  new Jsonix.Context(
     [XLink_1_0, OWS_1_0_0, Filter_1_0_0, GML_2_1_2, SLD_1_0_0, OWC_0_3_1],
     {
       namespacePrefixes : {
-        "http://www.w3.org/1999/xlink": "xlink"
+        "http://www.w3.org/1999/xlink": "xlink",
+        "http://www.opengis.net/ows": "ows"
       }
     }
   );
@@ -72,8 +75,7 @@
       boundingBox: {
         name: {
           "namespaceURI": "http://www.opengis.net/ows",
-          "localPart": "BoundingBox",
-          "prefix": "ows"
+          "localPart": "BoundingBox"
         },
         value: {
           crs: map.getView().getProjection().getCode(),
@@ -100,6 +102,7 @@
         hidden: layer.getVisible(),
         opacity: layer.getOpacity(),
         name: name,
+        title: layer.get('title'),
         group: layer.get("group"),
         server: [{
           onlineResource: [{
