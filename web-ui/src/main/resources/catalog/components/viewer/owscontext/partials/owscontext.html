@@ -4,11 +4,15 @@
     <span class="fa fa-save"></span>
     Sauvegarder
   </a>
-  <button type="button" class="btn btn-default">
+  <button type="button" class="btn btn-default import">
     <span class="fa fa-upload"></span>
     Restaurer
   </button>
 </div>
+<input class="hidden" type="file"
+       accept="text/xml" id="owc-file-input"
+       data-ng-model="foo"
+       data-ng-change="importOwc()"/>
 <p>
   ou <a href="truite">exporter au Format KML</a>
 </p>

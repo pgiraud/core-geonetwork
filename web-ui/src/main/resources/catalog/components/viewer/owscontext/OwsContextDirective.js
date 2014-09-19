@@ -16,6 +16,53 @@
   var unmarshaller = context.createUnmarshaller();
   var marshaller = context.createMarshaller();
 
+  function loadContext(context, map) {
+    // first remove any existing layer
+    map.getLayers().forEach(function(layer) {
+        console.info('Layer removed: ', layer);
+        map.removeLayer(layer);
+    });
+
+    // set the General.BoundingBox
+    var bbox = context.general.boundingBox.value;
+    var ll = bbox.lowerCorner;
+    var ur = bbox.upperCorner;
+    var extent = ll.concat(ur);
+    var projection = bbox.crs;
+    // reproject in case bbox's projection doesn't match map's projection
+    extent = ol.proj.transformExtent(extent, map.getView().getProjection(), projection);
+    map.getView().fitExtent(extent, map.getSize());
+
+    // load the resources
+    var layers = context.resourceList.layer;
+    var i;
+    for (i = 0; i < layers.length; i++) {
+        var layer = layers[i];
+        if (layer.name.indexOf('google') != -1) {
+            // pass
+        } else if (layer.name.indexOf('osm') != -1) {
+            var osmSource = new ol.source.OSM();
+            olLayer = new ol.layer.Tile({source: osmSource});
+        } else {
+            var server = layer.server[0];
+            if (server.service == 'urn:ogc:serviceType:WMS') {
+                var onlineResource = server.onlineResource[0];
+                var source = new ol.source.ImageWMS({
+                    url: onlineResource.href,
+                    params: {'LAYERS': layer.name}
+                });
+                olLayer = new ol.layer.Image({ source: source });
+            }
+        }
+        if (olLayer) {
+            olLayer.setOpacity(layer.opacity);
+            olLayer.setVisible(!layer.hidden);
+            olLayer.set('group', layer.group);
+            map.addLayer(olLayer);
+        }
+    }
+}
+
   // creates a javascript object based on map context then marshals it into XML
   function writeContext(map) {
 
@@ -33,8 +80,7 @@
           lowerCorner: [extent[0], extent[1]],
           upperCorner: [extent[2], extent[3]]
         }
-      },
-      title: "The title for the context"
+      }
     };
 
     var resourceList = {
@@ -83,6 +129,25 @@
     return xml;
   }
 
+  function readAsText(f, callback) {
+    try {
+      var reader = new FileReader();
+      reader.readAsText(f);
+      reader.onload = function(e) {
+        if (e.target && e.target.result) {
+          callback(e.target.result);
+        } else {
+          console.error("File could not be loaded");
+        }
+      };
+      reader.onerror = function(e) {
+        console.error("File could not be read");
+      };
+    } catch (e) {
+      console.error("File could not be read");
+    }
+  }
+
   /**
    * @ngdoc directive
    * @name gn_owscontext_directive.directive:gnOwsContext
@@ -107,6 +172,20 @@
             var str = new XMLSerializer().serializeToString(xml);
             var base64 = base64EncArr(strToUTF8Arr(str));
             $($event.target).attr('href', 'data:xml;base64,' + base64);
+          };
+
+          var fileInput = element.find('input[type="file"]')[0];
+          element.find('.import').click(function() {
+            fileInput.click();
+          });
+
+          scope.importOwc = function() {
+            if (fileInput.files.length > 0) {
+              readAsText(fileInput.files[0], function(text) {
+                var context = unmarshaller.unmarshalString(text).value;
+                loadContext(context, scope.map);
+              });
+            }
           };
         }
       };
